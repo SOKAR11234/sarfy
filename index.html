@@ -34,7 +34,7 @@
           <span class="text-xl font-black tracking-tight text-white block leading-none">صَرْفِي</span>
           <div class="flex items-center gap-1.5 mt-1">
             <span id="syncDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span id="syncStatus" class="text-[10px] text-slate-400 font-semibold">جاهز</span>
+            <span id="syncStatus" class="text-[10px] text-slate-400 font-semibold">جاهز ومستقر</span>
           </div>
         </div>
       </div>
@@ -183,11 +183,11 @@
     <!-- لوحة تحكم ولي الأمر -->
     <div id="parentDashboard" class="hidden space-y-6 w-full my-auto">
       
-      <!-- ربط ابن -->
+      <!-- نموذج إرسال طلب ربط -->
       <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
         <div>
           <h3 class="text-sm font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-user-plus text-indigo-400"></i> ربط ابن جديد
+            <i class="fa-solid fa-user-plus text-indigo-400"></i> ربط ابن جديد بالمنظومة
           </h3>
           <p class="text-xs text-slate-400 mt-1">اكتب رقم هاتف الابن لإرسال طلب الربط، وستظهر بياناته هنا فور ضغطه على قبول.</p>
         </div>
@@ -199,13 +199,14 @@
         </form>
       </div>
 
+      <!-- قائمة الأبناء وإعطاء المصروف -->
       <div id="linkedChildrenContainer" class="space-y-5"></div>
 
     </div>
 
   </main>
 
-  <!-- نافذة إعطاء المصروف للابن -->
+  <!-- نافذة إعطاء المصروف للابن مع الملاحظات -->
   <div id="addAllowanceModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl">
       <h3 class="text-base font-bold mb-1 text-white flex items-center gap-2">
@@ -231,6 +232,7 @@
     </div>
   </div>
 
+  <!-- التنبيه العائم -->
   <div id="toast" class="fixed bottom-5 left-5 bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-2xl shadow-2xl transition-all duration-300 transform translate-y-20 opacity-0 z-50 flex items-center gap-2.5 text-xs font-semibold"></div>
 
   <script>
@@ -258,14 +260,18 @@
       setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3500);
     }
 
-    // اتصال مباشر بدون Timeout مفاجئ
     async function callApi(payload) {
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
-      return await res.json();
+      const text = await res.text();
+      try {
+        return JSON.parse(text);
+      } catch (err) {
+        throw new Error("السيرفر رجع استجابة غير صالحة (غالباً صفحة تسجيل دخول أو خطأ صلاحيات)");
+      }
     }
 
     function setAuthTab(tab) {
@@ -327,7 +333,7 @@
           }
         }
       } catch (err) {
-        notify('تعذر الاتصال بـ Google Sheets. تأكد من إعدادات النشر', true);
+        notify(err.message, true);
       } finally {
         btn.disabled = false;
         btn.innerHTML = origText;
@@ -407,7 +413,7 @@
           showDashboardError(res ? res.message : 'استجابة غير صحيحة من السيرفر');
         }
       } catch (err) {
-        showDashboardError(err.toString());
+        showDashboardError(err.message);
       } finally {
         isFetching = false;
       }
@@ -430,9 +436,6 @@
               <button onclick="loadDashboardData()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5">
                 <i class="fa-solid fa-rotate-right"></i> إعادة المحاولة
               </button>
-              <a href="${API_URL}" target="_blank" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
-                <i class="fa-solid fa-up-right-from-square"></i> فحص الرابط في تبويب جديد
-              </a>
             </div>
           </div>
         `;
@@ -590,6 +593,7 @@
               </div>
             </div>
 
+            <!-- زر وضع المصروف والملاحظات -->
             <button onclick="openAllowanceModal('${child.phone}', '${child.name}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-lg shadow-emerald-600/20">
               <i class="fa-solid fa-plus text-xs"></i> إعطاء مصروف للابن
             </button>
